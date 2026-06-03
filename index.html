@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>CANVAS</title>
+
+    <!-- PWA : installation comme application -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#004AAD">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+    <!-- iOS : ouverture en plein écran depuis l'écran d'accueil -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CANVAS">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F8FF;
+            color: #333;
+        }
+        .container {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .header-color {
+            color: #004AAD;
+        }
+        .button-primary {
+            background-color: #0094FF;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .button-primary:hover {
+            background-color: #007ACC;
+        }
+        .button-secondary {
+            background-color: #89CFF0;
+            color: #004AAD;
+            transition: background-color 0.3s ease;
+        }
+        .button-secondary:hover {
+            background-color: #6EB2D9;
+        }
+        /* Make table cells with a lot of content wrap */
+        .long-text-cell {
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        .sticky-actions-col {
+            position: sticky;
+            right: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            box-shadow: -4px 0 8px -2px rgb(0 0 0 / 0.08);
+        }
+        tbody tr.bg-white .sticky-actions-col { background-color: #ffffff; }
+        tbody tr.bg-gray-50 .sticky-actions-col { background-color: #f9fafb; }
+        .tab-btn {
+            padding: 10px 20px;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-size: 15px;
+        }
+        .tab-btn.active { color: #004AAD; border-bottom-color: #004AAD; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #planZone {
+            position: relative;
+            width: 100%;
+            min-height: 600px;
+            background-color: #f8fafc;
+            background-image: linear-gradient(rgba(0,74,173,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,74,173,0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            border: 2px dashed #89CFF0;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: none;
+        }
+        .plan-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #aac4e0;
+            font-size: 15px;
+            pointer-events: none;
+        }
+        .room-card {
+            position: absolute;
+            background: white;
+            border: 2px solid #0094FF;
+            border-radius: 10px;
+            padding: 10px 12px;
+            min-width: 130px;
+            max-width: 210px;
+            box-shadow: 0 4px 12px rgba(0,148,255,0.18);
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+            z-index: 10;
+        }
+        .room-card-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #004AAD;
+            text-align: center;
+            margin-bottom: 6px;
+            padding: 0 20px 5px;
+            border-bottom: 1px solid #e2eaf5;
+            pointer-events: none;
+        }
+        .room-card-info { font-size: 11px; color: #444; line-height: 1.6; pointer-events: none; }
+        .room-card-info span { display: block; }
+        .room-card-badge { display: inline-block; background: #e8f4ff; color: #0055cc; border-radius: 4px; padding: 1px 5px; font-size: 10px; font-weight: 600; margin-top: 4px; }
+        .room-card-delete, .room-card-rotate {
+            position: absolute;
+            top: 4px;
+            z-index: 20;
+            background: none;
+            border: none;
+            padding: 0 2px;
+            cursor: pointer;
+        }
+        .room-card-delete { right: 6px; color: #f87171; font-size: 14px; font-weight: 700; }
+        .room-card-rotate { left: 6px; color: #60a5fa; font-size: 15px; }
+        .room-card-number {
+            position: absolute;
+            bottom: 5px;
+            right: 7px;
+            background: #004AAD;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 9px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .card-GARAGE { border-color: #94a3b8; background: #f8fafc; }
+        .card-CHAMBRE { border-color: #f472b6; background: #fff0f7; }
+        .card-SDB { border-color: #38bdf8; background: #f0faff; }
+        .card-CUISINE { border-color: #fb923c; background: #fff8f0; }
+        .card-SALON { border-color: #a78bfa; background: #f8f0ff; }
+        .card-SEJOUR { border-color: #a78bfa; background: #f8f0ff; }
+        .card-WC { border-color: #34d399; background: #f0fff8; }
+        .card-BUREAU { border-color: #fbbf24; background: #fffdf0; }
+        .card-ENTREE { border-color: #60a5fa; background: #f0f8ff; }
+        .card-TERRASSE { border-color: #4ade80; background: #f0fff4; }
+        .card-BALCON { border-color: #4ade80; background: #f0fff4; }
+        .card-default { border-color: #0094FF; background: #ffffff; }
+        .photo-thumb-wrap { position: relative; display: inline-block; }
+        .photo-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 2px solid #89CFF0; cursor: pointer; }
+        .photo-del-btn {
+            position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; padding: 0; line-height: 1;
+        }
+        .card-photo-strip { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; pointer-events: all; }
+        .card-photo-mini { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(0,74,173,0.2); cursor: pointer; }
+        #photoModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 10000; align-items: center; justify-content: center; flex-direction: column; }
+        #photoModal.open { display: flex; }
+        #photoModalImg { max-width: 96vw; max-height: 82vh; border-radius: 8px; object-fit: contain; }
+        #photoModalClose { position: absolute; top: 16px; right: 20px; color: white; font-size: 30px; cursor: pointer; background: none; border: none; line-height: 1; }
+        #photoModalCaption { color: #cbd5e1; font-size: 13px; margin-top: 10px; text-align: center; }
+
+        /* Mode application installée : respecter l'encoche / barre d'état */
+        @media (display-mode: standalone) {
+            body { padding-top: max(1rem, env(safe-area-inset-top)); }
+        }
+
+        /* Aide à l'installation */
+        #installBar {
+            position: fixed; left: 12px; right: 12px;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            display: none; align-items: center; gap: 12px;
+            background: #004AAD; color: #fff;
+            padding: 12px 14px; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            font-size: 14px; z-index: 1000;
+        }
+        #installBar.show { display: flex; }
+        #installBar .txt { flex: 1; line-height: 1.3; }
+        #installBar button {
+            border: none; border-radius: 8px; padding: 8px 14px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        #installAccept { background: #0094FF; color: #fff; }
+        #installClose { background: transparent; color: #cfe4ff; font-size: 20px; padding: 4px 8px; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container p-8 max-w-4xl w-full">
+        <h1 class="text-3xl font-bold text-center mb-6 header-color">CANVAS</h1>
+        <p class="text-center text-gray-600 mb-6">Ajoutez facilement les détails de chaque pièce de votre habitation et exportez-les pour une analyse ou un rapport.</p>
+        <div class="flex border-b border-gray-200 mb-6">
+            <button class="tab-btn active" onclick="switchTab('formulaire')">📋 Formulaire</button>
+            <button class="tab-btn" onclick="switchTab('plan')">🗺️ Plan de repérage</button>
+        </div>
+
+        <div id="tab-formulaire" class="tab-content active">
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4 header-color">Nouvelle Pièce</h2>
+            <form id="roomForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="projectName" class="block text-sm font-medium text-gray-700">Nom du projet:</label>
+                    <input type="text" id="projectName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ex: Résidence Les Pins">
+                </div>
+                <div>
+                    <label for="projectLevel" class="block text-sm font-medium text-gray-700">Niveau:</label>
+                    <select id="projectLevel" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un niveau</option>
+                        <option value="RDC">RDC</option>
+                        <option value="R+1">R+1</option>
+                        <option value="R+2">R+2</option>
+                        <option value="R+3">R+3</option>
+                    </select>
+                </div>
+                <div>
+                    <!-- Removed "Nom de la pièce" field -->
+                </div>
+                <div id="roomTypeContainer">
+                    <label for="roomType" class="block text-sm font-medium text-gray-700">Type de pièce:</label>
+                    <select id="roomType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="">Sélectionner un type</option>
+                        <option value="BUREAU 1">BUREAU 1</option>
+                        <option value="BUREAU 2">BUREAU 2</option>
+                        <option value="BUREAU 3">BUREAU 3</option>
+                        <option value="BUREAU 4">BUREAU 4</option>
+                        <option value="BUREAU 5">BUREAU 5</option>
+                        <option value="BUREAU 6">BUREAU 6</option>
+                        <option value="BUREAU 7">BUREAU 7</option>
+                        <option value="BUREAU 8">BUREAU 8</option>
+                        <option value="BUREAU 9">BUREAU 9</option>
+                        <option value="BUREAU 10">BUREAU 10</option>
+                        <option value="CHAMBRE 1">CHAMBRE 1</option>
+                        <option value="CHAMBRE 2">CHAMBRE 2</option>
+                        <option value="CHAMBRE 3">CHAMBRE 3</option>
+                        <option value="CHAMBRE 4">CHAMBRE 4</option>
+                        <option value="CHAMBRE 5">CHAMBRE 5</option>
+                        <option value="CHAMBRE 6">CHAMBRE 6</option>
+                        <option value="CHAMBRE 7">CHAMBRE 7</option>
+                        <option value="CHAMBRE 8">CHAMBRE 8</option>
+                        <option value="CHAMBRE 9">CHAMBRE 9</option>
+                        <option value="CHAMBRE 10">CHAMBRE 10</option>
+                        <option value="GARAGE 1">GARAGE 1</option>
+                        <option value="GARAGE 2">GARAGE 2</option>
+                        <option value="GARAGE 3">GARAGE 3</option>
+                        <option value="GARAGE 4">GARAGE 4</option>
+                        <option value="GARAGE 5">GARAGE 5</option>
+                        <option value="LOCAL TECHNIQUE 1">LOCAL TECHNIQUE 1</option>
+                        <option value="LOCAL TECHNIQUE 2">LOCAL TECHNIQUE 2</option>
+                        <option value="LOCAL TECHNIQUE 3">LOCAL TECHNIQUE 3</option>
+                        <option value="LOCAL TECHNIQUE 4">LOCAL TECHNIQUE 4</option>
+                        <option value="LOCAL TECHNIQUE 5">LOCAL TECHNIQUE 5</option>
+                        <option value="LOCAL TECHNIQUE 6">LOCAL TECHNIQUE 6</option>
+                        <option value="LOCAL TECHNIQUE 7">LOCAL TECHNIQUE 7</option>
+                        <option value="LOCAL TECHNIQUE 8">LOCAL TECHNIQUE 8</option>
+                        <option value="LOCAL TECHNIQUE 9">LOCAL TECHNIQUE 9</option>
+                        <option value="LOCAL TECHNIQUE 10">LOCAL TECHNIQUE 10</option>
+                        <option value="CELLIER1">CELLIER1</option>
+                        <option value="CELLIER2">CELLIER2</option>
+                        <option value="BUANDERIE">BUANDERIE</option>
+                        <option value="ENTREE">ENTREE</option>
+                        <option value="CUISINE 1">CUISINE 1</option>
+                        <option value="CUISINE 2">CUISINE 2</option>
+                        <option value="SEJOUR 1">SEJOUR 1</option>
+                        <option value="SEJOUR 2">SEJOUR 2</option>
+                        <option value="SAM">SAM</option>
+                        <option value="SALON/SAM">SALON/SAM</option>
+                        <option value="SALON 1">SALON 1</option>
+                        <option value="SALON 2">SALON 2</option>
+                        <option value="CAGE ESCALIER 1">CAGE ESCALIER 1</option>
+                        <option value="CAGE ESCALIER 2">CAGE ESCALIER 2</option>
+                        <option value="DGT1">DGT1</option>
+                        <option value="DGT2">DGT2</option>
+                        <option value="DGT3">DGT3</option>
+                        <option value="SDB 1">SDB 1</option>
+                        <option value="SDB 2">SDB 2</option>
+                        <option value="SDB 3">SDB 3</option>
+                        <option value="DRESSING1">DRESSING1</option>
+                        <option value="DRESSING2">DRESSING2</option>
+                        <option value="HALL1">HALL1</option>
+                        <option value="HALL2">HALL2</option>
+                        <option value="MEZZANINE 1">MEZZANINE 1</option>
+                        <option value="MEZZANINE 2">MEZZANINE 2</option>
+                        <option value="WC 1">WC 1</option>
+                        <option value="WC 2">WC 2</option>
+                        <option value="PL1">PL1</option>
+                        <option value="PL2">PL2</option>
+                        <option value="PL3">PL3</option>
+                        <option value="PL4">PL4</option>
+                        <option value="TERRASSE1">TERRASSE1</option>
+                        <option value="TERRASSE2">TERRASSE2</option>
+                        <option value="BALCON1">BALCON1</option>
+                        <option value="BALCON2">BALCON2</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <!-- Field for screed thickness, now in meters and incremented by 0.01 -->
+                <div>
+                    <label for="screedThickness" class="block text-sm font-medium text-gray-700">Épaisseur de la chape (m):</label>
+                    <input type="number" id="screedThickness" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <!-- End of updated field -->
+                <!-- Removed roomWidth and roomLength fields -->
+                <!-- Fields for surface and total linear, now editable -->
+                <div class="md:col-span-1">
+                    <label for="roomSurface" class="block text-sm font-medium text-gray-700">Surface (m²):</label>
+                    <input type="number" id="roomSurface" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="totalLinear" class="block text-sm font-medium text-gray-700">Linéaire total de la pièce (m):</label>
+                    <input type="number" id="totalLinear" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <!-- End of editable fields -->
+
+                <div>
+                    <label for="minHeight" class="block text-sm font-medium text-gray-700">Hauteur Min (m):</label>
+                    <input type="number" id="minHeight" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="maxHeight" class="block text-sm font-medium text-gray-700">Hauteur Max (m):</label>
+                    <input type="number" id="maxHeight" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div class="md:col-span-2">
+                    <label for="averageHeight" class="block text-sm font-medium text-gray-700">Hauteur Moyenne (m):</label>
+                    <input type="number" id="averageHeight" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-100" step="0.01" min="0" readonly>
+                </div>
+                
+                <div>
+                    <label for="floorType" class="block text-sm font-medium text-gray-700">Type de revêtement de sol:</label>
+                    <select id="floorType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="PARQUET FLOTTANT">PARQUET FLOTTANT</option>
+                        <option value="PARQUET CONTRECOLLE">PARQUET CONTRECOLLE</option>
+                        <option value="PARQUET MASSIF">PARQUET MASSIF</option>
+                        <option value="VINYLE">VINYLE</option>
+                        <option value="LINO">LINO</option>
+                        <option value="MOQUETTE">MOQUETTE</option>
+                        <option value="BRUT">BRUT</option>
+                        <option value="CARRELAGE">CARRELAGE</option>
+                        <option value="JONC">JONC</option>
+                        <option value="SISAL">SISAL</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="baseboardType" class="block text-sm font-medium text-gray-700">Type de plinthe:</label>
+                    <select id="baseboardType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="BOIS MASSIF">Bois Massif</option>
+                        <option value="STRATIFIE">STRATIFIE</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="wallType" class="block text-sm font-medium text-gray-700">Type de revêtement de mur:</label>
+                    <select id="wallType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="PEINTURE">PEINTURE</option>
+                        <option value="PP">PP</option>
+                        <option value="FAIENCE">FAIENCE</option>
+                        <option value="TOILE DE VERRE + PEINT">TOILE DE VERRE + PEINT</option>
+                        <option value="BRUT">BRUT</option>
+                        <option value="LAZURE">LAZURE</option>
+                        <option value="PAREMENT">PAREMENT</option>
+                        <option value="VINYLE">VINYLE</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="wallDoublageStructure" class="block text-sm font-medium text-gray-700">Structure doublage:</label>
+                    <select id="wallDoublageStructure" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="PLACO 80+13 COLLE">Placo 80+13 collé</option>
+                        <option value="PLACO 100+13 SUR STRUCTURE">Placo 100+13 sur structure</option>
+                        <option value="LAMBRIS">Lambris</option>
+                        <option value="CONTRE CLOISON BRIQUE 50MM">Contre cloison brique 50mm</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="ceilingStructure" class="block text-sm font-medium text-gray-700">Structure plafond:</label>
+                    <select id="ceilingStructure" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="LAMBRIS">LAMBRIS</option>
+                        <option value="BRIQUETTE">BRIQUETTE</option>
+                        <option value="BA13">BA13</option>
+                        <option value="ENDUIT">ENDUIT</option>
+                        <option value="FAIENCE">FAIENCE</option>
+                        <option value="DALLE ACOUSTIQUE">DALLE ACOUSTIQUE</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="ceilingType" class="block text-sm font-medium text-gray-700">Type de revêtement de plafond:</label>
+                    <select id="ceilingType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="PEINTURE">PEINTURE</option>
+                        <option value="PP">PP</option>
+                        <option value="FAIENCE">FAIENCE</option>
+                        <option value="TOILE DE VERRE + PEINT">TOILE DE VERRE + PEINT</option>
+                        <option value="BRUT">BRUT</option>
+                        <option value="LAZURE">LAZURE</option>
+                        <option value="PAREMENT">PAREMENT</option>
+                        <option value="VINYLE">VINYLE</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="slopePercentage" class="block text-sm font-medium text-gray-700">Pourcentage de pente (%):</label>
+                    <input type="number" id="slopePercentage" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="1" min="0">
+                </div>
+                
+                <!-- Fields for surfaces -->
+                <div>
+                    <label for="ceilingJoinerySurface" class="block text-sm font-medium text-gray-700">Surface menuiseries plafond (m²):</label>
+                    <input type="number" id="ceilingJoinerySurface" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="ceilingHatchSurface" class="block text-sm font-medium text-gray-700">Surface trémies plafond (m²):</label>
+                    <input type="number" id="ceilingHatchSurface" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfacePpPart" class="block text-sm font-medium text-gray-700">Surface Papier Peint Partiel (m²):</label>
+                    <input type="number" id="surfacePpPart" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfaceFaiencePart" class="block text-sm font-medium text-gray-700">Surface Faïence Partiel (m²):</label>
+                    <input type="number" id="surfaceFaiencePart" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfaceParementPart" class="block text-sm font-medium text-gray-700">Surface Parement Partiel (m²):</label>
+                    <input type="number" id="surfaceParementPart" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfaceLambrisPartiel" class="block text-sm font-medium text-gray-700">Surface Lambris Partiel (m²):</label>
+                    <input type="number" id="surfaceLambrisPartiel" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfaceVinylePartiel" class="block text-sm font-medium text-gray-700">Surface Vinyle Partiel (m²):</label>
+                    <input type="number" id="surfaceVinylePartiel" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="surfaceTremieMur" class="block text-sm font-medium text-gray-700">Surface Trémie Mur (m²):</label>
+                    <input type="number" id="surfaceTremieMur" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <!-- End of surface fields -->
+
+                <!-- Count fields moved to the very end -->
+                <div>
+                    <label for="numPf63" class="block text-sm font-medium text-gray-700">Nombre de PF 63:</label>
+                    <input type="number" id="numPf63" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" min="0" value="0">
+                </div>
+                <div>
+                    <label for="numPf73" class="block text-sm font-medium text-gray-700">Nombre de PF 73:</label>
+                    <input type="number" id="numPf73" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" min="0" value="0">
+                </div>
+                <div>
+                    <label for="numPf83" class="block text-sm font-medium text-gray-700">Nombre de PF 83:</label>
+                    <input type="number" id="numPf83" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" min="0" value="0">
+                </div>
+                <div>
+                    <label for="numSlidingDoors" class="block text-sm font-medium text-gray-700">Nombre de portes coulissantes:</label>
+                    <input type="number" id="numSlidingDoors" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" min="0" value="0">
+                </div>
+                <div>
+                    <label for="numPf93" class="block text-sm font-medium text-gray-700">Nombre de PF 93:</label>
+                    <input type="number" id="numPf93" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" min="0" value="0">
+                </div>
+                
+                <!-- Fixed 5 window inputs with new fields -->
+                <div class="col-span-full">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2 mt-4">Détails des 5 Fenêtres :</h3>
+                </div>
+                <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Window 1 -->
+                    <div class="col-span-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Fenêtre 1</h4>
+                        <div>
+                            <label for="window1Width" class="block text-sm font-medium text-gray-700">Largeur (m):</label>
+                            <input type="number" id="window1Width" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window1Height" class="block text-sm font-medium text-gray-700">Hauteur (m):</label>
+                            <input type="number" id="window1Height" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window1JoineryType" class="block text-sm font-medium text-gray-700">Type de menuiserie:</label>
+                            <select id="window1JoineryType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="PVC">PVC</option>
+                                <option value="Bois">Bois</option>
+                                <option value="Alu">Alu</option>
+                                <option value="Acier">Acier</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window1ShutterType" class="block text-sm font-medium text-gray-700">Type de volet:</label>
+                            <select id="window1ShutterType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="VR PVC">VR PVC</option>
+                                <option value="VR PVC+MOT">VR PVC+MOT</option>
+                                <option value="VR ALU">VR ALU</option>
+                                <option value="VR ALU+MOT">VR ALU+MOT</option>
+                                <option value="VOLET BOIS">VOLET BOIS</option>
+                                <option value="VOLET ALU">VOLET ALU</option>
+                                <option value="VOLET PVC">VOLET PVC</option>
+                                <option value="PERSIENNE">PERSIENNE</option>
+                                <option value="GRILLE DE DEFENSE">GRILLE DE DEFENSE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window1Orientation" class="block text-sm font-medium text-gray-700">Orientation:</label>
+                            <select id="window1Orientation" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner une orientation</option>
+                                <option value="Nord">Nord</option>
+                                <option value="Sud">Sud</option>
+                                <option value="Est">Est</option>
+                                <option value="Ouest">Ouest</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Window 2 -->
+                    <div class="col-span-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Fenêtre 2</h4>
+                        <div>
+                            <label for="window2Width" class="block text-sm font-medium text-gray-700">Largeur (m):</label>
+                            <input type="number" id="window2Width" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window2Height" class="block text-sm font-medium text-gray-700">Hauteur (m):</label>
+                            <input type="number" id="window2Height" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window2JoineryType" class="block text-sm font-medium text-gray-700">Type de menuiserie:</label>
+                            <select id="window2JoineryType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="PVC">PVC</option>
+                                <option value="Bois">Bois</option>
+                                <option value="Alu">Alu</option>
+                                <option value="Acier">Acier</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window2ShutterType" class="block text-sm font-medium text-gray-700">Type de volet:</label>
+                            <select id="window2ShutterType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="VR PVC">VR PVC</option>
+                                <option value="VR PVC+MOT">VR PVC+MOT</option>
+                                <option value="VR ALU">VR ALU</option>
+                                <option value="VR ALU+MOT">VR ALU+MOT</option>
+                                <option value="VOLET BOIS">VOLET BOIS</option>
+                                <option value="VOLET ALU">VOLET ALU</option>
+                                <option value="VOLET PVC">VOLET PVC</option>
+                                <option value="PERSIENNE">PERSIENNE</option>
+                                <option value="GRILLE DE DEFENSE">GRILLE DE DEFENSE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window2Orientation" class="block text-sm font-medium text-gray-700">Orientation:</label>
+                            <select id="window2Orientation" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner une orientation</option>
+                                <option value="Nord">Nord</option>
+                                <option value="Sud">Sud</option>
+                                <option value="Est">Est</option>
+                                <option value="Ouest">Ouest</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Window 3 -->
+                    <div class="col-span-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Fenêtre 3</h4>
+                        <div>
+                            <label for="window3Width" class="block text-sm font-medium text-gray-700">Largeur (m):</label>
+                            <input type="number" id="window3Width" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window3Height" class="block text-sm font-medium text-gray-700">Hauteur (m):</label>
+                            <input type="number" id="window3Height" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window3JoineryType" class="block text-sm font-medium text-gray-700">Type de menuiserie:</label>
+                            <select id="window3JoineryType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="PVC">PVC</option>
+                                <option value="Bois">Bois</option>
+                                <option value="Alu">Alu</option>
+                                <option value="Acier">Acier</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window3ShutterType" class="block text-sm font-medium text-gray-700">Type de volet:</label>
+                            <select id="window3ShutterType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="VR PVC">VR PVC</option>
+                                <option value="VR PVC+MOT">VR PVC+MOT</option>
+                                <option value="VR ALU">VR ALU</option>
+                                <option value="VR ALU+MOT">VR ALU+MOT</option>
+                                <option value="VOLET BOIS">VOLET BOIS</option>
+                                <option value="VOLET ALU">VOLET ALU</option>
+                                <option value="VOLET PVC">VOLET PVC</option>
+                                <option value="PERSIENNE">PERSIENNE</option>
+                                <option value="GRILLE DE DEFENSE">GRILLE DE DEFENSE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window3Orientation" class="block text-sm font-medium text-gray-700">Orientation:</label>
+                            <select id="window3Orientation" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner une orientation</option>
+                                <option value="Nord">Nord</option>
+                                <option value="Sud">Sud</option>
+                                <option value="Est">Est</option>
+                                <option value="Ouest">Ouest</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Window 4 -->
+                    <div class="col-span-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Fenêtre 4</h4>
+                        <div>
+                            <label for="window4Width" class="block text-sm font-medium text-gray-700">Largeur (m):</label>
+                            <input type="number" id="window4Width" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window4Height" class="block text-sm font-medium text-gray-700">Hauteur (m):</label>
+                            <input type="number" id="window4Height" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window4JoineryType" class="block text-sm font-medium text-gray-700">Type de menuiserie:</label>
+                            <select id="window4JoineryType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="PVC">PVC</option>
+                                <option value="Bois">Bois</option>
+                                <option value="Alu">Alu</option>
+                                <option value="Acier">Acier</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window4ShutterType" class="block text-sm font-medium text-gray-700">Type de volet:</label>
+                            <select id="window4ShutterType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="VR PVC">VR PVC</option>
+                                <option value="VR PVC+MOT">VR PVC+MOT</option>
+                                <option value="VR ALU">VR ALU</option>
+                                <option value="VR ALU+MOT">VR ALU+MOT</option>
+                                <option value="VOLET BOIS">VOLET BOIS</option>
+                                <option value="VOLET ALU">VOLET ALU</option>
+                                <option value="VOLET PVC">VOLET PVC</option>
+                                <option value="PERSIENNE">PERSIENNE</option>
+                                <option value="GRILLE DE DEFENSE">GRILLE DE DEFENSE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window4Orientation" class="block text-sm font-medium text-gray-700">Orientation:</label>
+                            <select id="window4Orientation" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner une orientation</option>
+                                <option value="Nord">Nord</option>
+                                <option value="Sud">Sud</option>
+                                <option value="Est">Est</option>
+                                <option value="Ouest">Ouest</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Window 5 -->
+                    <div class="col-span-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Fenêtre 5</h4>
+                        <div>
+                            <label for="window5Width" class="block text-sm font-medium text-gray-700">Largeur (m):</label>
+                            <input type="number" id="window5Width" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window5Height" class="block text-sm font-medium text-gray-700">Hauteur (m):</label>
+                            <input type="number" id="window5Height" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                        </div>
+                        <div>
+                            <label for="window5JoineryType" class="block text-sm font-medium text-gray-700">Type de menuiserie:</label>
+                            <select id="window5JoineryType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="PVC">PVC</option>
+                                <option value="Bois">Bois</option>
+                                <option value="Alu">Alu</option>
+                                <option value="Acier">Acier</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window5ShutterType" class="block text-sm font-medium text-gray-700">Type de volet:</label>
+                            <select id="window5ShutterType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner un type</option>
+                                <option value="VR PVC">VR PVC</option>
+                                <option value="VR PVC+MOT">VR PVC+MOT</option>
+                                <option value="VR ALU">VR ALU</option>
+                                <option value="VR ALU+MOT">VR ALU+MOT</option>
+                                <option value="VOLET BOIS">VOLET BOIS</option>
+                                <option value="VOLET ALU">VOLET ALU</option>
+                                <option value="VOLET PVC">VOLET PVC</option>
+                                <option value="PERSIENNE">PERSIENNE</option>
+                                <option value="GRILLE DE DEFENSE">GRILLE DE DEFENSE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="window5Orientation" class="block text-sm font-medium text-gray-700">Orientation:</label>
+                            <select id="window5Orientation" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner une orientation</option>
+                                <option value="Nord">Nord</option>
+                                <option value="Sud">Sud</option>
+                                <option value="Est">Est</option>
+                                <option value="Ouest">Ouest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- End of fixed 5 window inputs -->
+                
+                <!-- Heating Type field -->
+                <div class="md:col-span-2">
+                    <label for="heatingType" class="block text-sm font-medium text-gray-700">Type de chauffage:</label>
+                    <select id="heatingType" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sélectionner un type</option>
+                        <option value="Electrique">Electrique</option>
+                        <option value="Fioul">Fioul</option>
+                        <option value="Gaz">Gaz</option>
+                        <option value="SS ELEC">SS ELEC</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <!-- End of Heating Type field -->
+
+                <!-- New fields for Kitchen elements - Placed after Heating Type -->
+                <div>
+                    <label for="linPlacard" class="block text-sm font-medium text-gray-700">Linéaire de placard (ml):</label>
+                    <input type="number" id="linPlacard" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="elemHautsCuisine" class="block text-sm font-medium text-gray-700">Éléments hauts de cuisine (ml):</label>
+                    <input type="number" id="elemHautsCuisine" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="elemBasCuisine" class="block text-sm font-medium text-gray-700">Éléments bas de cuisine (ml):</label>
+                    <input type="number" id="elemBasCuisine" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <div>
+                    <label for="longPlanTravail" class="block text-sm font-medium text-gray-700">Longueur du plan de travail (ml):</label>
+                    <input type="number" id="longPlanTravail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" step="0.01" min="0">
+                </div>
+                <!-- End of new fields for Kitchen elements -->
+
+                <div class="md:col-span-2">
+                    <label for="roomCondition" class="block text-sm font-medium text-gray-700">État général:</label>
+                    <textarea id="roomCondition" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">📸 Photos de la pièce :</label>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <label for="roomPhotos" class="cursor-pointer bg-blue-50 border border-blue-300 text-blue-700 rounded-md px-4 py-2 text-sm font-medium hover:bg-blue-100 flex items-center gap-2">
+                            <span>📷</span> Ajouter des photos
+                            <input type="file" id="roomPhotos" accept="image/*" multiple capture="environment" class="hidden" onchange="previewPhotos(event)">
+                        </label>
+                        <span class="text-xs text-gray-400">Appareil photo ou galerie</span>
+                    </div>
+                    <div id="photoPreviewArea" class="flex flex-wrap gap-3 mt-3"></div>
+                </div>
+                <div class="md:col-span-2 text-right">
+                    <button type="submit" class="button-primary px-6 py-2 rounded-md font-semibold">Ajouter la pièce</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="mb-8">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 class="text-2xl font-semibold header-color">Pièces Enregistrées</h2>
+                <button type="button" id="deleteAllRoomsButton" class="hidden text-sm font-semibold text-red-600 hover:text-red-900 border border-red-200 rounded-md px-3 py-1.5 hover:bg-red-50">
+                    Supprimer toutes les pièces
+                </button>
+            </div>
+            <div id="roomSummaryList" class="mb-4 space-y-2"></div>
+            <div class="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Niveau</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Épaisseur Chape (m)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surface (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linéaire Total (m)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hauteur Min (m)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hauteur Max (m)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hauteur Moy (m)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type de Revêtement de Sol</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type de Plinthe</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type de Revêtement de Mur</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Structure Doublage</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Structure Plafond</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type de Revêtement de Plafond</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pente (%)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surface Menuiseries Plafond (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surface Trémies Plafond (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Papier Peint Partiel (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Faïence Partiel (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Parement Partiel (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Lambris Partiel (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Vinyle Partiel (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surf. Trémie Mur (m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre PF 63</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre PF 73</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre PF 83</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre Portes Coulissantes</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre PF 93</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider long-text-cell">Fenêtre 1 (Lxl / Menuiserie / Volet / Orientation)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider long-text-cell">Fenêtre 2 (Lxl / Menuiserie / Volet / Orientation)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider long-text-cell">Fenêtre 3 (Lxl / Menuiserie / Volet / Orientation)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider long-text-cell">Fenêtre 4 (Lxl / Menuiserie / Volet / Orientation)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider long-text-cell">Fenêtre 5 (Lxl / Menuiserie / Volet / Orientation)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 1</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 2</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 3</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 4</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 5</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type de Chauffage</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vide 6</th> <!-- New empty column header -->
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linéaire Placard (ml)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">El. Hauts Cuisine (ml)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">El. Bas Cuisine (ml)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Long. Plan Travail (ml)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">État</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photos</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky-actions-col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomList" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="48" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Aucune pièce ajoutée pour le moment.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="text-center" style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+            <button id="exportCsvButton" class="button-secondary px-6 py-2 rounded-md font-semibold">Exporter dossier complet</button>
+            <button id="driveButton" class="button-secondary px-6 py-2 rounded-md font-semibold">Envoyer vers le Drive central</button>
+        </div>
+        </div>
+
+        <div id="tab-plan" class="tab-content">
+            <section class="mb-8">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <h2 class="text-2xl font-semibold header-color">🗺️ Plan de repérage</h2>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="planLevelFilter" class="text-sm border border-blue-300 rounded px-3 py-1.5 bg-white">
+                            <option value="">Tous les niveaux</option>
+                            <option value="RDC">RDC</option>
+                            <option value="R+1">R+1</option>
+                            <option value="R+2">R+2</option>
+                            <option value="R+3">R+3</option>
+                        </select>
+                        <button onclick="resetPlan()" class="text-sm text-blue-500 border border-blue-300 rounded px-3 py-1 hover:bg-blue-50">↺ Positions</button>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm mb-4">Glissez les blocs au doigt/souris · ↻ pour tourner · Pincez pour redimensionner</p>
+                <div id="planZone">
+                    <div class="plan-hint" id="planHint">Ajoutez des pièces dans le formulaire pour les voir apparaître ici.</div>
+                </div>
+            </section>
+        </div>
+    </div>
+    <div id="photoModal">
+        <button id="photoModalClose" onclick="closePhotoModal()">✕</button>
+        <img id="photoModalImg" src="" alt="Photo pièce">
+        <div id="photoModalCaption"></div>
+    </div>
+
+    <script>
+        const roomForm = document.getElementById('roomForm');
+        const projectNameInput = document.getElementById('projectName');
+        const projectLevelInput = document.getElementById('projectLevel');
+        const roomTypeInput = document.getElementById('roomType');
+        const screedThicknessInput = document.getElementById('screedThickness');
+        const totalLinearInput = document.getElementById('totalLinear');
+        const roomSurfaceInput = document.getElementById('roomSurface');
+        const minHeightInput = document.getElementById('minHeight');
+        const maxHeightInput = document.getElementById('maxHeight');
+        const averageHeightInput = document.getElementById('averageHeight');
+        const heatingTypeInput = document.getElementById('heatingType');
+        const linPlacardInput = document.getElementById('linPlacard');
+        const elemHautsCuisineInput = document.getElementById('elemHautsCuisine');
+        const elemBasCuisineInput = document.getElementById('elemBasCuisine');
+        const longPlanTravailInput = document.getElementById('longPlanTravail');
+        const roomListTableBody = document.getElementById('roomList');
+        const roomSummaryList = document.getElementById('roomSummaryList');
+        const deleteAllRoomsButton = document.getElementById('deleteAllRoomsButton');
+        const exportCsvButton = document.getElementById('exportCsvButton');
+        const planLevelFilterInput = document.getElementById('planLevelFilter');
+
+        let rooms = [];
+        let cardPositions = {};
+        let cardRotations = {};
+        let cardScales = {};
+        let pendingPhotos = [];
+        const SHARED_RECAP_KEY = 'bim_recap_surface_shared_v1';
+
+        function roomIdentity(room) {
+            return [
+                (room.projectName || '').trim().toLowerCase(),
+                (room.projectLevel || '').trim().toLowerCase(),
+                (room.type || '').trim().toLowerCase()
+            ].join('|');
+        }
+
+        function loadSharedRecapIntoErwan() {
+            try {
+                const raw = localStorage.getItem(SHARED_RECAP_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (!data || typeof data !== 'object') return;
+                const values = Object.values(data)
+                    .filter(v => v && v.room)
+                    .map(v => v.room);
+                if (values.length) {
+                    rooms = values;
+                }
+            } catch (err) {
+                console.warn('Impossible de charger le recap partagé:', err);
+            }
+        }
+
+        function syncErwanToSharedRecap() {
+            try {
+                const raw = localStorage.getItem(SHARED_RECAP_KEY);
+                const data = raw ? JSON.parse(raw) : {};
+                const next = (data && typeof data === 'object') ? data : {};
+                // Nettoyer les anciennes entrées APPLI ERWAN supprimées
+                Object.keys(next).forEach(k => {
+                    if (next[k] && next[k].source === 'erwan') {
+                        delete next[k];
+                    }
+                });
+                rooms.forEach(room => {
+                    const key = roomIdentity(room);
+                    if (!key) return;
+                    // Règle de priorité: APPLI ERWAN écrase toujours
+                    next[key] = {
+                        source: 'erwan',
+                        updatedAt: Date.now(),
+                        room: room
+                    };
+                });
+                localStorage.setItem(SHARED_RECAP_KEY, JSON.stringify(next));
+            } catch (err) {
+                console.warn('Impossible de synchroniser le recap partagé:', err);
+            }
+        }
+
+        function initialiserProjetDepuisUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const projetNom = params.get('projet_nom');
+            if (projetNom && projectNameInput) {
+                projectNameInput.value = projetNom;
+            }
+        }
+
+        function calculateAndDisplayAverageHeight() {
+            const minH = parseFloat(minHeightInput.value);
+            const maxH = parseFloat(maxHeightInput.value);
+            if (!isNaN(minH) && !isNaN(maxH)) {
+                averageHeightInput.value = ((minH + maxH) / 2).toFixed(2);
+            } else {
+                averageHeightInput.value = '';
+            }
+        }
+
+        function previewPhotos(event) {
+            const area = document.getElementById('photoPreviewArea');
+            Array.from(event.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const b64 = e.target.result;
+                    pendingPhotos.push(b64);
+                    const wrap = document.createElement('div');
+                    wrap.className = 'photo-thumb-wrap';
+                    const img = document.createElement('img');
+                    img.src = b64;
+                    img.className = 'photo-thumb';
+                    img.onclick = () => openPhotoModal(b64, 'Aperçu');
+                    const del = document.createElement('button');
+                    del.className = 'photo-del-btn';
+                    del.innerHTML = '✕';
+                    del.onclick = () => {
+                        const i = pendingPhotos.indexOf(b64);
+                        if (i > -1) pendingPhotos.splice(i, 1);
+                        wrap.remove();
+                    };
+                    wrap.appendChild(img);
+                    wrap.appendChild(del);
+                    area.appendChild(wrap);
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function openPhotoModal(src, caption) {
+            document.getElementById('photoModalImg').src = src;
+            document.getElementById('photoModalCaption').textContent = caption || '';
+            document.getElementById('photoModal').classList.add('open');
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoModal').classList.remove('open');
+            document.getElementById('photoModalImg').src = '';
+        }
+
+        document.addEventListener('click', e => {
+            if (e.target.id === 'photoModal') closePhotoModal();
+        });
+
+        function photoThumbsHTML(photos, roomType) {
+            if (!photos || !photos.length) return '';
+            return '<div class="card-photo-strip">' +
+                photos.map((src, i) => `<img src="${src}" class="card-photo-mini" onclick="openPhotoModal('${src}','${roomType} - photo ${i + 1}')" title="Photo ${i + 1}">`).join('') +
+                '</div>';
+        }
+
+        function photoTableHTML(photos, roomType) {
+            if (!photos || !photos.length) return '<span class="text-gray-400 text-xs">-</span>';
+            return photos.map((src, i) => `<img src="${src}" style="width:38px;height:38px;object-fit:cover;border-radius:4px;border:1px solid #89CFF0;margin:2px;cursor:pointer" onclick="openPhotoModal('${src}','${roomType} - photo ${i + 1}')">`).join('');
+        }
+
+        function roomLabel(room) {
+            const parts = [room.projectName, room.projectLevel, room.type].filter(Boolean);
+            return parts.length ? parts.join(' · ') : 'Pièce sans nom';
+        }
+
+        function renderRoomSummary() {
+            if (!roomSummaryList) return;
+            if (rooms.length === 0) {
+                roomSummaryList.innerHTML = '';
+                if (deleteAllRoomsButton) deleteAllRoomsButton.classList.add('hidden');
+                return;
+            }
+            if (deleteAllRoomsButton) deleteAllRoomsButton.classList.remove('hidden');
+            roomSummaryList.innerHTML = rooms.map((room, index) => `
+                <div class="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <span class="text-sm font-medium text-gray-800">${roomLabel(room)}</span>
+                    <button type="button" data-delete-index="${index}" class="shrink-0 text-sm font-semibold text-red-600 hover:text-red-900 px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
+                </div>
+            `).join('');
+        }
+
+        function renderRoomList() {
+            roomListTableBody.innerHTML = '';
+            renderRoomSummary();
+            if (rooms.length === 0) {
+                // Colonnes ajustees avec Projet + Niveau
+                roomListTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="48" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">Aucune pièce ajoutée pour le moment.</td>
+                    </tr>
+                `;
+                exportCsvButton.disabled = true;
+                syncErwanToSharedRecap();
+                renderPlan();
+                return;
+            }
+
+            rooms.forEach((room, index) => {
+                const row = document.createElement('tr');
+                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                // Function to format window details
+                const formatWindowDetails = (width, height, joinery, shutter, orientation) => {
+                    const lxl = (width !== null && height !== null) ? `${Number(width).toFixed(2)}x${Number(height).toFixed(2)}m` : 'N/A';
+                    const menuiserie = joinery || 'N/A';
+                    const volet = shutter || 'N/A';
+                    const orient = orientation || 'N/A';
+                    return `${lxl} / ${menuiserie} / ${volet} / ${orient}`;
+                };
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.projectName || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.projectLevel || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${room.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.screedThickness !== null ? room.screedThickness.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surface !== null ? room.surface.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.totalLinear !== null ? room.totalLinear.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.minHeight || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.maxHeight || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.averageHeight || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.floorType || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.baseboardType || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.wallType || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.wallDoublageStructure || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.ceilingStructure || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.ceilingCoveringType || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.slopePercentage !== null ? room.slopePercentage + '%' : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.ceilingJoinerySurface !== null ? room.ceilingJoinerySurface.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.ceilingHatchSurface !== null ? room.ceilingHatchSurface.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfacePpPart !== null ? room.surfacePpPart.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfaceFaiencePart !== null ? room.surfaceFaiencePart.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfaceParementPart !== null ? room.surfaceParementPart.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfaceLambrisPartiel !== null ? room.surfaceLambrisPartiel.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfaceVinylePartiel !== null ? room.surfaceVinylePartiel.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.surfaceTremieMur !== null ? room.surfaceTremieMur.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.numPf63}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.numPf73}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.numPf83}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.numSlidingDoors}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.numPf93}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 long-text-cell">${formatWindowDetails(room.window1Width, room.window1Height, room.window1JoineryType, room.window1ShutterType, room.window1Orientation)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 long-text-cell">${formatWindowDetails(room.window2Width, room.window2Height, room.window2JoineryType, room.window2ShutterType, room.window2Orientation)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 long-text-cell">${formatWindowDetails(room.window3Width, room.window3Height, room.window3JoineryType, room.window3ShutterType, room.window3Orientation)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 long-text-cell">${formatWindowDetails(room.window4Width, room.window4Height, room.window4JoineryType, room.window4ShutterType, room.window4Orientation)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 long-text-cell">${formatWindowDetails(room.window5Width, room.window5Height, room.window5JoineryType, room.window5ShutterType, room.window5Orientation)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- Empty column 1 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- Empty column 2 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- Empty column 3 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- Empty column 4 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- Empty column 5 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.heatingType || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td> <!-- New empty column 6 -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.linPlacard !== null ? room.linPlacard.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.elemHautsCuisine !== null ? room.elemHautsCuisine.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.elemBasCuisine !== null ? room.elemBasCuisine.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${room.longPlanTravail !== null ? room.longPlanTravail.toFixed(2) : 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="${room.condition}">${room.condition || 'N/A'}</td>
+                    <td class="px-6 py-4 text-sm">${photoTableHTML(room.photos, room.type)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="deleteRoom(${index})" class="text-red-600 hover:text-red-900 ml-4">Supprimer</button>
+                    </td>
+                `;
+                roomListTableBody.appendChild(row);
+            });
+            exportCsvButton.disabled = false;
+            syncErwanToSharedRecap();
+            renderPlan();
+        }
+
+        function addRoom(event) {
+            event.preventDefault();
+
+            const type = roomTypeInput.value;
+            const projectName = projectNameInput.value ? projectNameInput.value.trim() : '';
+            const projectLevel = projectLevelInput.value || '';
+            const screedThickness = screedThicknessInput.value ? parseFloat(screedThicknessInput.value) : null;
+            const surface = roomSurfaceInput.value ? parseFloat(roomSurfaceInput.value) : null;
+            const totalLinear = totalLinearInput.value ? parseFloat(totalLinearInput.value) : null;
+            
+            const minHeight = minHeightInput.value ? parseFloat(minHeightInput.value) : null;
+            const maxHeight = maxHeightInput.value ? parseFloat(maxHeightInput.value) : null;
+            const averageHeight = averageHeightInput.value ? parseFloat(averageHeightInput.value) : null;
+            
+            const floorType = document.getElementById('floorType').value;
+            const baseboardType = document.getElementById('baseboardType').value;
+            const wallType = document.getElementById('wallType').value;
+            const wallDoublageStructure = document.getElementById('wallDoublageStructure').value;
+            const ceilingStructure = document.getElementById('ceilingStructure').value;
+            const ceilingCoveringType = document.getElementById('ceilingType').value;
+            const slopePercentage = document.getElementById('slopePercentage').value ? parseFloat(document.getElementById('slopePercentage').value) : null;
+            
+            // Ceiling surface fields
+            const ceilingJoinerySurface = document.getElementById('ceilingJoinerySurface').value ? parseFloat(document.getElementById('ceilingJoinerySurface').value) : null;
+            const ceilingHatchSurface = document.getElementById('ceilingHatchSurface').value ? parseFloat(document.getElementById('ceilingHatchSurface').value) : null;
+            
+            // Wall surface fields
+            const surfacePpPart = document.getElementById('surfacePpPart').value ? parseFloat(document.getElementById('surfacePpPart').value) : null;
+            const surfaceFaiencePart = document.getElementById('surfaceFaiencePart').value ? parseFloat(document.getElementById('surfaceFaiencePart').value) : null;
+            const surfaceParementPart = document.getElementById('surfaceParementPart').value ? parseFloat(document.getElementById('surfaceParementPart').value) : null;
+            const surfaceLambrisPartiel = document.getElementById('surfaceLambrisPartiel').value ? parseFloat(document.getElementById('surfaceLambrisPartiel').value) : null;
+            const surfaceVinylePartiel = document.getElementById('surfaceVinylePartiel').value ? parseFloat(document.getElementById('surfaceVinylePartiel').value) : null;
+            const surfaceTremieMur = document.getElementById('surfaceTremieMur').value ? parseFloat(document.getElementById('surfaceTremieMur').value) : null;
+
+            // Count fields
+            const numPf63 = parseInt(document.getElementById('numPf63').value);
+            const numPf73 = parseInt(document.getElementById('numPf73').value);
+            const numPf83 = parseInt(document.getElementById('numPf83').value);
+            const numSlidingDoors = parseInt(document.getElementById('numSlidingDoors').value);
+            const numPf93 = parseInt(document.getElementById('numPf93').value);
+
+            // Fixed 5 window fields with new properties
+            const window1Width = document.getElementById('window1Width').value ? parseFloat(document.getElementById('window1Width').value) : null;
+            const window1Height = document.getElementById('window1Height').value ? parseFloat(document.getElementById('window1Height').value) : null;
+            const window1JoineryType = document.getElementById('window1JoineryType').value || '';
+            const window1ShutterType = document.getElementById('window1ShutterType').value || '';
+            const window1Orientation = document.getElementById('window1Orientation').value || '';
+
+            const window2Width = document.getElementById('window2Width').value ? parseFloat(document.getElementById('window2Width').value) : null;
+            const window2Height = document.getElementById('window2Height').value ? parseFloat(document.getElementById('window2Height').value) : null;
+            const window2JoineryType = document.getElementById('window2JoineryType').value || '';
+            const window2ShutterType = document.getElementById('window2ShutterType').value || '';
+            const window2Orientation = document.getElementById('window2Orientation').value || '';
+
+            const window3Width = document.getElementById('window3Width').value ? parseFloat(document.getElementById('window3Width').value) : null;
+            const window3Height = document.getElementById('window3Height').value ? parseFloat(document.getElementById('window3Height').value) : null;
+            const window3JoineryType = document.getElementById('window3JoineryType').value || '';
+            const window3ShutterType = document.getElementById('window3ShutterType').value || '';
+            const window3Orientation = document.getElementById('window3Orientation').value || '';
+
+            const window4Width = document.getElementById('window4Width').value ? parseFloat(document.getElementById('window4Width').value) : null;
+            const window4Height = document.getElementById('window4Height').value ? parseFloat(document.getElementById('window4Height').value) : null;
+            const window4JoineryType = document.getElementById('window4JoineryType').value || '';
+            const window4ShutterType = document.getElementById('window4ShutterType').value || '';
+            const window4Orientation = document.getElementById('window4Orientation').value || '';
+
+            const window5Width = document.getElementById('window5Width').value ? parseFloat(document.getElementById('window5Width').value) : null;
+            const window5Height = document.getElementById('window5Height').value ? parseFloat(document.getElementById('window5Height').value) : null;
+            const window5JoineryType = document.getElementById('window5JoineryType').value || '';
+            const window5ShutterType = document.getElementById('window5ShutterType').value || '';
+            const window5Orientation = document.getElementById('window5Orientation').value || '';
+
+            const heatingType = heatingTypeInput.value;
+            const linPlacard = linPlacardInput.value ? parseFloat(linPlacardInput.value) : null;
+            const elemHautsCuisine = elemHautsCuisineInput.value ? parseFloat(elemHautsCuisineInput.value) : null;
+            const elemBasCuisine = elemBasCuisineInput.value ? parseFloat(elemBasCuisineInput.value) : null;
+            const longPlanTravail = longPlanTravailInput.value ? parseFloat(longPlanTravailInput.value) : null;
+
+            const condition = document.getElementById('roomCondition').value;
+
+            const newRoom = {
+                projectName,
+                projectLevel,
+                type,
+                screedThickness,
+                surface,
+                totalLinear,
+                minHeight,
+                maxHeight,
+                averageHeight,
+                floorType,
+                baseboardType,
+                wallType,
+                wallDoublageStructure,
+                ceilingStructure,
+                ceilingCoveringType,
+                slopePercentage,
+                ceilingJoinerySurface,
+                ceilingHatchSurface, 
+                surfacePpPart,
+                surfaceFaiencePart,
+                surfaceParementPart,
+                surfaceLambrisPartiel,
+                surfaceVinylePartiel,
+                surfaceTremieMur,
+                numPf63,
+                numPf73,
+                numPf83,
+                numSlidingDoors,
+                numPf93,
+                window1Width,
+                window1Height,
+                window1JoineryType,
+                window1ShutterType,
+                window1Orientation,
+                window2Width,
+                window2Height,
+                window2JoineryType,
+                window2ShutterType,
+                window2Orientation,
+                window3Width,
+                window3Height,
+                window3JoineryType,
+                window3ShutterType,
+                window3Orientation,
+                window4Width,
+                window4Height,
+                window4JoineryType,
+                window4ShutterType,
+                window4Orientation,
+                window5Width,
+                window5Height,
+                window5JoineryType,
+                window5ShutterType,
+                window5Orientation,
+                heatingType,
+                linPlacard,
+                elemHautsCuisine,
+                elemBasCuisine,
+                longPlanTravail,
+                condition,
+                photos: [...pendingPhotos]
+            };
+
+            rooms.push(newRoom);
+            renderRoomList();
+            roomForm.reset();
+            roomSurfaceInput.value = '';
+            totalLinearInput.value = '';
+            averageHeightInput.value = '';
+            screedThicknessInput.value = '';
+            pendingPhotos = [];
+            document.getElementById('photoPreviewArea').innerHTML = '';
+        }
+
+        function deleteRoom(index) {
+            rooms.splice(index, 1);
+            const newPos = {}, newRot = {}, newSc = {};
+            rooms.forEach((_, i) => {
+                const oldI = i >= index ? i + 1 : i;
+                if (cardPositions[oldI]) newPos[i] = cardPositions[oldI];
+                if (cardRotations[oldI]) newRot[i] = cardRotations[oldI];
+                if (cardScales[oldI]) newSc[i] = cardScales[oldI];
+            });
+            cardPositions = newPos;
+            cardRotations = newRot;
+            cardScales = newSc;
+            renderRoomList();
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                if ((name === 'formulaire' && b.textContent.includes('Formulaire')) ||
+                    (name === 'plan' && b.textContent.includes('Plan'))) {
+                    b.classList.add('active');
+                }
+            });
+        }
+
+        function cardClass(type) {
+            const t = (type || '').toUpperCase();
+            if (t.includes('GARAGE')) return 'card-GARAGE';
+            if (t.includes('CHAMBRE')) return 'card-CHAMBRE';
+            if (t.includes('SDB')) return 'card-SDB';
+            if (t.includes('CUISINE')) return 'card-CUISINE';
+            if (t.includes('SALON')) return 'card-SALON';
+            if (t.includes('SEJOUR') || t.includes('SAM')) return 'card-SEJOUR';
+            if (t.includes('WC')) return 'card-WC';
+            if (t.includes('BUREAU')) return 'card-BUREAU';
+            if (t.includes('ENTREE') || t.includes('HALL')) return 'card-ENTREE';
+            if (t.includes('TERRASSE')) return 'card-TERRASSE';
+            if (t.includes('BALCON')) return 'card-BALCON';
+            return 'card-default';
+        }
+
+        function createCard(room, index) {
+            const zone = document.getElementById('planZone');
+            const hint = document.getElementById('planHint');
+            if (!zone) return;
+            if (hint) hint.style.display = 'none';
+
+            if (cardPositions[index] === undefined) {
+                const col = Object.keys(cardPositions).length % 5;
+                const row = Math.floor(Object.keys(cardPositions).length / 5);
+                cardPositions[index] = { x: 16 + col * 155, y: 16 + row * 185 };
+            }
+
+            const { x, y } = cardPositions[index];
+            const rot = cardRotations[index] || 0;
+            const sc = cardScales[index] || 1;
+
+            const card = document.createElement('div');
+            card.className = 'room-card ' + cardClass(room.type);
+            card.id = 'card-' + index;
+            card.style.left = x + 'px';
+            card.style.top = y + 'px';
+            card.style.transform = `rotate(${rot}deg) scale(${sc})`;
+            card.style.transformOrigin = 'center center';
+            card.innerHTML = `
+                <button class="room-card-rotate" onclick="rotateCard(event,${index})">↻</button>
+                <button class="room-card-delete" onclick="deleteRoom(${index})">✕</button>
+                <div class="room-card-title">${room.type || 'Pièce'}</div>
+                <div class="room-card-info">
+                    ${room.projectLevel ? `<span>🏷️ Niveau: ${room.projectLevel}</span>` : ''}
+                    ${room.surface !== null ? `<span>📐 <b>${Number(room.surface).toFixed(2)} m²</b></span>` : ''}
+                    ${room.averageHeight !== null ? `<span>↕ H.moy: ${room.averageHeight} m</span>` : ''}
+                    ${room.floorType ? `<span>🪵 ${room.floorType}</span>` : ''}
+                    ${room.wallType ? `<span>🖼 ${room.wallType}</span>` : ''}
+                    ${room.heatingType ? `<span>🔥 ${room.heatingType}</span>` : ''}
+                    ${room.totalLinear !== null ? `<span class="room-card-badge">Lin: ${Number(room.totalLinear).toFixed(2)} m</span>` : ''}
+                </div>
+                ${photoThumbsHTML(room.photos, room.type)}
+                <div class="room-card-number">${index + 1}</div>`;
+            makeDraggable(card, index);
+            makePinch(card, index);
+            zone.appendChild(card);
+        }
+
+        function rotateCard(e, index) {
+            e.stopPropagation();
+            cardRotations[index] = ((cardRotations[index] || 0) + 90) % 360;
+            const card = document.getElementById('card-' + index);
+            if (!card) return;
+            card.style.transform = `rotate(${cardRotations[index]}deg) scale(${cardScales[index] || 1})`;
+            clampCard(card, index);
+        }
+
+        function clampCard(card, index) {
+            const zone = card.parentElement;
+            if (!zone) return;
+            const rot = (cardRotations[index] || 0) * Math.PI / 180;
+            const sc = cardScales[index] || 1;
+            const w = card.offsetWidth * sc;
+            const h = card.offsetHeight * sc;
+            const bw = Math.abs(w * Math.cos(rot)) + Math.abs(h * Math.sin(rot));
+            const bh = Math.abs(w * Math.sin(rot)) + Math.abs(h * Math.cos(rot));
+            const halfBW = bw / 2;
+            const halfBH = bh / 2;
+            const cx = card.offsetWidth / 2;
+            const cy = card.offsetHeight / 2;
+            const minX = halfBW - cx;
+            const maxX = zone.offsetWidth - halfBW - cx;
+            const minY = halfBH - cy;
+            const maxY = zone.offsetHeight - halfBH - cy;
+            const nx = Math.max(minX, Math.min(maxX, card.offsetLeft));
+            const ny = Math.max(minY, Math.min(maxY, card.offsetTop));
+            card.style.left = nx + 'px';
+            card.style.top = ny + 'px';
+            cardPositions[index] = { x: nx, y: ny };
+        }
+
+        function makeDraggable(el, index) {
+            let sx, sy, sl, st;
+            function start(cx, cy) { sx = cx; sy = cy; sl = el.offsetLeft; st = el.offsetTop; }
+            function move(cx, cy) {
+                const zone = el.parentElement;
+                const rot = (cardRotations[index] || 0) * Math.PI / 180;
+                const sc = cardScales[index] || 1;
+                const w = el.offsetWidth * sc;
+                const h = el.offsetHeight * sc;
+                const bw = Math.abs(w * Math.cos(rot)) + Math.abs(h * Math.sin(rot));
+                const bh = Math.abs(w * Math.sin(rot)) + Math.abs(h * Math.cos(rot));
+                const halfBW = bw / 2;
+                const halfBH = bh / 2;
+                const rawNx = sl + cx - sx;
+                const rawNy = st + cy - sy;
+                const cx2 = el.offsetWidth / 2;
+                const cy2 = el.offsetHeight / 2;
+                const minX = halfBW - cx2;
+                const maxX = zone.offsetWidth - halfBW - cx2;
+                const minY = halfBH - cy2;
+                const maxY = zone.offsetHeight - halfBH - cy2;
+                const nx = Math.max(minX, Math.min(maxX, rawNx));
+                const ny = Math.max(minY, Math.min(maxY, rawNy));
+                el.style.left = nx + 'px';
+                el.style.top = ny + 'px';
+                cardPositions[index] = { x: nx, y: ny };
+            }
+
+            el.addEventListener('touchstart', e => {
+                if (e.target.classList.contains('room-card-delete') || e.target.classList.contains('room-card-rotate')) return;
+                if (e.touches.length > 1) return;
+                e.preventDefault();
+                start(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: false });
+
+            el.addEventListener('touchmove', e => {
+                if (e.touches.length > 1) return;
+                e.preventDefault();
+                move(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: false });
+
+            el.addEventListener('mousedown', e => {
+                if (e.target.classList.contains('room-card-delete') || e.target.classList.contains('room-card-rotate')) return;
+                start(e.clientX, e.clientY);
+                const mm = e2 => move(e2.clientX, e2.clientY);
+                const mu = () => {
+                    document.removeEventListener('mousemove', mm);
+                    document.removeEventListener('mouseup', mu);
+                };
+                document.addEventListener('mousemove', mm);
+                document.addEventListener('mouseup', mu);
+            });
+        }
+
+        function makePinch(el, index) {
+            let initDist = null, initScale = 1;
+            el.addEventListener('touchstart', e => {
+                if (e.touches.length === 2) {
+                    initDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    initScale = cardScales[index] || 1;
+                }
+            }, { passive: true });
+            el.addEventListener('touchmove', e => {
+                if (e.touches.length !== 2 || !initDist) return;
+                e.preventDefault();
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                cardScales[index] = Math.max(0.5, Math.min(3, initScale * dist / initDist));
+                el.style.transform = `rotate(${cardRotations[index] || 0}deg) scale(${cardScales[index]})`;
+            }, { passive: false });
+            el.addEventListener('touchend', e => {
+                if (e.touches.length < 2) {
+                    initDist = null;
+                    clampCard(el, index);
+                }
+            });
+        }
+
+        function renderPlan() {
+            const zone = document.getElementById('planZone');
+            if (!zone) return;
+            const selectedLevel = planLevelFilterInput ? planLevelFilterInput.value : '';
+            zone.querySelectorAll('.room-card').forEach(c => c.remove());
+            const roomsForPlan = selectedLevel ? rooms.filter(room => room.projectLevel === selectedLevel) : rooms;
+            roomsForPlan.forEach(room => {
+                const realIndex = rooms.indexOf(room);
+                if (realIndex >= 0) createCard(room, realIndex);
+            });
+            const hint = document.getElementById('planHint');
+            if (hint) hint.style.display = roomsForPlan.length === 0 ? 'block' : 'none';
+        }
+
+        function resetPlan() {
+            cardPositions = {};
+            cardRotations = {};
+            cardScales = {};
+            renderPlan();
+        }
+
+        function buildCsvString() {
+            const headers = [
+                "",
+                "EP. CHAPE",
+                "SURF SOL",
+                "LINEAIRE",
+                "HSPmini",
+                "HSPmaxi",
+                "HSP MOY",
+                "RVT SOL",
+                "PLINTHE",
+                "STRUCT. DOUB",
+                "RVT MUR",
+                "STRUCTURE PFD",
+                "RVT PLAFD",
+                "% PLAFD ramp",
+                "MEN. PLAFOND",
+                "TRMIS PLAFD",
+                "PP PART",
+                "FAIENCE PART",
+                "PARMT PART",
+                "LAMB PART HORS DOUBLAGE",
+                "VYNIL PART",
+                "TREMIS MUR",
+                "PF63",
+                "PF73",
+                "PF83",
+                "P.COUL",
+                "PF93",
+                "L",
+                "H",
+                "TYPE MEN",
+                "VOLET",
+                "N/S/E/O",
+                "L",
+                "H",
+                "TYPE MEN",
+                "VOLET",
+                "N/S/E/O",
+                "L",
+                "H",
+                "TYPE MEN",
+                "VOLET",
+                "N/S/E/O",
+                "L",
+                "H",
+                "TYPE MEN",
+                "VOLET",
+                "N/S/E/O",
+                "L",
+                "H",
+                "TYPE MEN",
+                "VOLET",
+                "N/S/E/O",
+                "SURF MEN 1",
+                "SURF MEN 2",
+                "SURF MEN 3",
+                "SURF MEN 4",
+                "SURF MEN 5",
+                "CHAUFFAGE",
+                "PUISSANCE",
+                "LONG PLACARD",
+                "LONG ELEMT CUIS HAUT",
+                "LONG ELEMT CUIS BAS",
+                "LONG PLAN W"
+            ];
+            const csvRows = [];
+
+            const asFrNumber = (value, digits = 2) => (
+                value !== null && value !== undefined && value !== '' && !Number.isNaN(value)
+                    ? Number(value).toFixed(digits).replace('.', ',')
+                    : ''
+            );
+
+            const escapeCsv = (field) => {
+                const text = field === null || field === undefined ? '' : String(field);
+                if (text.includes(';') || text.includes('"') || text.includes('\n') || text.includes('\r')) {
+                    return `"${text.replace(/"/g, '""')}"`;
+                }
+                return text;
+            };
+
+            csvRows.push(headers.map(escapeCsv).join(';'));
+
+            const emptyRow = new Array(headers.length).fill('');
+            const levelLabelMap = { 'RDC': 'Niveau 0', 'R+1': 'Niveau 1', 'R+2': 'Niveau 2' };
+            const buildLevelLabelRow = (level) => {
+                const row = new Array(headers.length).fill('');
+                row[0] = levelLabelMap[level] || level;
+                return row;
+            };
+            const roomToCsvRow = (room) => ([
+                // Colonne 1 du modele : etage + type de piece
+                [room.projectLevel, room.type].filter(Boolean).join(' - '),
+                // EP. CHAPE, SURF SOL, LINEAIRE
+                asFrNumber(room.screedThickness),
+                asFrNumber(room.surface),
+                asFrNumber(room.totalLinear),
+                // HSPmini, HSPmaxi, HSP MOY
+                asFrNumber(room.minHeight),
+                asFrNumber(room.maxHeight),
+                asFrNumber(room.averageHeight),
+                // RVT SOL, PLINTHE, STRUCT. DOUB, RVT MUR, STRUCTURE PFD, RVT PLAFD
+                room.floorType || '',
+                room.baseboardType || '',
+                room.wallDoublageStructure || '',
+                room.wallType || '',
+                room.ceilingStructure || '',
+                room.ceilingCoveringType || '',
+                // % PLAFD ramp, MEN. PLAFOND, TRMIS PLAFD
+                asFrNumber(room.slopePercentage),
+                asFrNumber(room.ceilingJoinerySurface),
+                asFrNumber(room.ceilingHatchSurface),
+                // PP PART, FAÏENCE PART, PARMT PART, LAMB PART HORS DOUBLAGE, VYNIL PART, TREMIS MUR
+                asFrNumber(room.surfacePpPart),
+                asFrNumber(room.surfaceFaiencePart),
+                asFrNumber(room.surfaceParementPart),
+                asFrNumber(room.surfaceLambrisPartiel),
+                asFrNumber(room.surfaceVinylePartiel),
+                asFrNumber(room.surfaceTremieMur),
+                // PF63, PF73, PF83, P.COUL, PF93
+                room.numPf63,
+                room.numPf73,
+                room.numPf83,
+                room.numSlidingDoors,
+                room.numPf93,
+                // MEN 1 : L, H, TYPE MEN, VOLET, N/S/E/O
+                asFrNumber(room.window1Width),
+                asFrNumber(room.window1Height),
+                room.window1JoineryType || '',
+                room.window1ShutterType || '',
+                room.window1Orientation || '',
+                // MEN 2
+                asFrNumber(room.window2Width),
+                asFrNumber(room.window2Height),
+                room.window2JoineryType || '',
+                room.window2ShutterType || '',
+                room.window2Orientation || '',
+                // MEN 3
+                asFrNumber(room.window3Width),
+                asFrNumber(room.window3Height),
+                room.window3JoineryType || '',
+                room.window3ShutterType || '',
+                room.window3Orientation || '',
+                // MEN 4
+                asFrNumber(room.window4Width),
+                asFrNumber(room.window4Height),
+                room.window4JoineryType || '',
+                room.window4ShutterType || '',
+                room.window4Orientation || '',
+                // MEN 5
+                asFrNumber(room.window5Width),
+                asFrNumber(room.window5Height),
+                room.window5JoineryType || '',
+                room.window5ShutterType || '',
+                room.window5Orientation || '',
+                // SURF MEN 1 a 5 (BA -> BE)
+                asFrNumber((room.window1Width || 0) * (room.window1Height || 0)),
+                asFrNumber((room.window2Width || 0) * (room.window2Height || 0)),
+                asFrNumber((room.window3Width || 0) * (room.window3Height || 0)),
+                asFrNumber((room.window4Width || 0) * (room.window4Height || 0)),
+                asFrNumber((room.window5Width || 0) * (room.window5Height || 0)),
+                // CHAUFFAGE, PUISSANCE (BG), LONG PLACARD, LONG ELEMT CUIS HAUT, LONG ELEMT CUIS BAS, LONG PLAN W
+                room.heatingType || '',
+                '',
+                asFrNumber(room.linPlacard),
+                asFrNumber(room.elemHautsCuisine),
+                asFrNumber(room.elemBasCuisine),
+                asFrNumber(room.longPlanTravail)
+            ]);
+
+            const recapBlocks = ['RDC', 'R+1', 'R+2'];
+            const linesPerBlock = 20;
+            const leadingEmptyRowsBeforeRdc = 5;
+
+            for (let i = 0; i < leadingEmptyRowsBeforeRdc; i++) {
+                csvRows.push(emptyRow.map(escapeCsv).join(';'));
+            }
+            csvRows.push(buildLevelLabelRow('RDC').map(escapeCsv).join(';'));
+
+            recapBlocks.forEach((level, idx) => {
+                const levelRows = rooms
+                    .filter(room => (room.projectLevel || '').trim().toUpperCase() === level)
+                    .slice(0, linesPerBlock);
+
+                levelRows.forEach(room => {
+                    csvRows.push(roomToCsvRow(room).map(escapeCsv).join(';'));
+                });
+
+                for (let i = levelRows.length; i < linesPerBlock; i++) {
+                    csvRows.push(emptyRow.map(escapeCsv).join(';'));
+                }
+
+                if (idx < recapBlocks.length - 1) {
+                    const nextLevel = recapBlocks[idx + 1];
+                    csvRows.push(emptyRow.map(escapeCsv).join(';'));
+                    csvRows.push(buildLevelLabelRow(nextLevel).map(escapeCsv).join(';'));
+                }
+            });
+
+            return ['sep=;', ...csvRows].join('\r\n');
+        }
+
+        async function exportToCsv() {
+            const csvString = buildCsvString();
+            const blob = new Blob(['\uFEFF', csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'caracteristiques_pieces.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function dataUrlToBlob(dataUrl) {
+            const [meta, base64] = dataUrl.split(',');
+            const mimeMatch = meta.match(/data:(.*?);base64/);
+            const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+            const bytes = atob(base64);
+            const arr = new Uint8Array(bytes.length);
+            for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+            return new Blob([arr], { type: mime });
+        }
+
+        async function capturePlanAsJpegBlob() {
+            const activeTab = document.querySelector('.tab-content.active');
+            const activeId = activeTab ? activeTab.id : 'tab-formulaire';
+            const selectedLevel = planLevelFilterInput ? planLevelFilterInput.value : '';
+            if (planLevelFilterInput) planLevelFilterInput.value = '';
+            switchTab('plan');
+            renderPlan();
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const zone = document.getElementById('planZone');
+            const canvas = await html2canvas(zone, { backgroundColor: '#f8fafc', scale: 2, useCORS: true, logging: false });
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            if (planLevelFilterInput) planLevelFilterInput.value = selectedLevel;
+            switchTab(activeId === 'tab-plan' ? 'plan' : 'formulaire');
+            renderPlan();
+            return dataUrlToBlob(dataUrl);
+        }
+
+        // Télécharge un blob dans le navigateur (repli quand le partage n'est pas dispo)
+        function downloadBlob(blob, fileName) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        }
+
+        // Construit le ZIP complet et renvoie { blob, fileName } (ou null si erreur)
+        async function buildBundleZipBlob() {
+            if (typeof JSZip === 'undefined') {
+                alert('JSZip non chargé. Impossible de créer le dossier ZIP.');
+                return null;
+            }
+            if (typeof html2canvas === 'undefined') {
+                alert('html2canvas non chargé. Impossible de capturer le plan.');
+                return null;
+            }
+
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const rootDirName = `export_canvas_${stamp}`;
+            const zip = new JSZip();
+            const root = zip.folder(rootDirName);
+
+            const csvString = buildCsvString();
+            root.file('caracteristiques_pieces.csv', '\uFEFF' + csvString);
+
+            const planBlob = await capturePlanAsJpegBlob();
+            root.file('plan_reperage.jpg', planBlob);
+
+            const photosDir = root.folder('photos');
+            rooms.forEach((room, roomIndex) => {
+                (room.photos || []).forEach((photoDataUrl, photoIndex) => {
+                    const safeType = (room.type || `piece_${roomIndex + 1}`).replace(/[^\w\-]+/g, '_');
+                    const fileName = `${String(roomIndex + 1).padStart(2, '0')}_${safeType}_photo_${photoIndex + 1}.jpg`;
+                    photosDir.file(fileName, dataUrlToBlob(photoDataUrl));
+                });
+            });
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            return { blob: zipBlob, fileName: `${rootDirName}.zip` };
+        }
+
+        async function exportBundleZip() {
+            const bundle = await buildBundleZipBlob();
+            if (!bundle) return;
+            downloadBlob(bundle.blob, bundle.fileName);
+        }
+
+        // Le téléphone sait-il partager des FICHIERS via la feuille de partage native ?
+        function supportsFileShare() {
+            try {
+                const probe = new File(['x'], 'probe.txt', { type: 'text/plain' });
+                return !!(navigator.canShare && navigator.share && navigator.canShare({ files: [probe] }));
+            } catch (err) {
+                return false;
+            }
+        }
+
+        // Action du bouton : partage natif sur mobile, sinon comportement bureau existant
+        async function shareOrExportBundle() {
+            try {
+                if (supportsFileShare()) {
+                    const bundle = await buildBundleZipBlob();
+                    if (!bundle) return;
+                    const file = new File([bundle.blob], bundle.fileName, { type: 'application/zip' });
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Export CANVAS',
+                            text: 'Caractéristiques des pièces'
+                        });
+                    } catch (err) {
+                        if (err && err.name === 'AbortError') return; // partage annulé par l'utilisateur
+                        console.warn('Partage impossible, repli sur téléchargement :', err);
+                        downloadBlob(bundle.blob, bundle.fileName);
+                    }
+                    return;
+                }
+                // Ordinateur (ou partage de fichiers non supporté) : on garde l'ancien comportement
+                await exportBundleToFolder();
+            } catch (err) {
+                console.error('Export :', err);
+                alert("L'export a échoué :\n" + (err && err.message ? err.message : err));
+            }
+        }
+
+        async function writeFileToHandle(dirHandle, fileName, content, mimeType = 'application/octet-stream') {
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            if (content instanceof Blob) {
+                await writable.write(content);
+            } else {
+                const blob = new Blob([content], { type: mimeType });
+                await writable.write(blob);
+            }
+            await writable.close();
+        }
+
+        async function exportBundleToFolder() {
+            if (typeof window.showDirectoryPicker !== 'function') {
+                await exportBundleZip();
+                return;
+            }
+
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const rootDirName = `export_canvas_${stamp}`;
+
+            try {
+                const parentDir = await window.showDirectoryPicker({ mode: 'readwrite' });
+                const rootDir = await parentDir.getDirectoryHandle(rootDirName, { create: true });
+                const photosDir = await rootDir.getDirectoryHandle('photos', { create: true });
+
+                const csvString = '\uFEFF' + buildCsvString();
+                await writeFileToHandle(rootDir, 'caracteristiques_pieces.csv', csvString, 'text/csv;charset=utf-8;');
+
+                const planBlob = await capturePlanAsJpegBlob();
+                await writeFileToHandle(rootDir, 'plan_reperage.jpg', planBlob, 'image/jpeg');
+
+                for (let roomIndex = 0; roomIndex < rooms.length; roomIndex++) {
+                    const room = rooms[roomIndex];
+                    const photos = room.photos || [];
+                    for (let photoIndex = 0; photoIndex < photos.length; photoIndex++) {
+                        const safeType = (room.type || `piece_${roomIndex + 1}`).replace(/[^\w\-]+/g, '_');
+                        const fileName = `${String(roomIndex + 1).padStart(2, '0')}_${safeType}_photo_${photoIndex + 1}.jpg`;
+                        await writeFileToHandle(photosDir, fileName, dataUrlToBlob(photos[photoIndex]), 'image/jpeg');
+                    }
+                }
+
+                alert(`Export terminé dans le dossier "${rootDirName}".`);
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.warn('Export dossier direct impossible, fallback ZIP:', err);
+                await exportBundleZip();
+            }
+        }
+
+        minHeightInput.addEventListener('input', calculateAndDisplayAverageHeight);
+        maxHeightInput.addEventListener('input', calculateAndDisplayAverageHeight);
+        
+        roomForm.addEventListener('submit', addRoom);
+        exportCsvButton.addEventListener('click', shareOrExportBundle);
+        if (planLevelFilterInput) {
+            planLevelFilterInput.addEventListener('change', renderPlan);
+        }
+        if (projectLevelInput) {
+            projectLevelInput.addEventListener('change', () => {
+                if (planLevelFilterInput) planLevelFilterInput.value = projectLevelInput.value || '';
+                renderPlan();
+            });
+        }
+
+        renderRoomList();
+        calculateAndDisplayAverageHeight(); // Initial calculation on load
+        initialiserProjetDepuisUrl();
+        loadSharedRecapIntoErwan();
+        renderRoomList();
+        renderPlan();
+    </script>
+
+    <!-- Barre d'aide à l'installation (PWA) -->
+    <div id="installBar" role="dialog" aria-label="Installer l'application">
+        <span class="txt" id="installText">Installer CANVAS sur votre écran d'accueil&nbsp;?</span>
+        <button id="installAccept">Installer</button>
+        <button id="installClose" aria-label="Fermer">&times;</button>
+    </div>
+
+    <script>
+        // --- Enregistrement du service worker ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .catch((err) => console.warn('Service worker non enregistré :', err));
+            });
+        }
+
+        // --- Aide à l'installation ---
+        (function () {
+            const bar = document.getElementById('installBar');
+            const txt = document.getElementById('installText');
+            const accept = document.getElementById('installAccept');
+            const closeBtn = document.getElementById('installClose');
+
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+            if (isStandalone) return; // déjà installée : on ne montre rien
+
+            const dismissed = (() => {
+                try { return localStorage.getItem('installHidden') === '1'; } catch (e) { return false; }
+            })();
+            const hide = () => {
+                bar.classList.remove('show');
+                try { localStorage.setItem('installHidden', '1'); } catch (e) {}
+            };
+            closeBtn.addEventListener('click', hide);
+
+            // Android / Chrome : invite d'installation native
+            let deferredPrompt = null;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (!dismissed) bar.classList.add('show');
+            });
+            accept.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    await deferredPrompt.userChoice;
+                    deferredPrompt = null;
+                }
+                hide();
+            });
+            window.addEventListener('appinstalled', hide);
+
+            // iOS Safari : pas d'invite native -> on affiche une astuce
+            const ua = window.navigator.userAgent;
+            const isIOS = /iphone|ipad|ipod/i.test(ua);
+            const isSafari = isIOS && !/crios|fxios|edgios/i.test(ua);
+            if (isIOS && isSafari && !dismissed) {
+                txt.innerHTML = "Pour installer&nbsp;: appuyez sur <strong>Partager</strong> puis « Sur l'écran d'accueil ».";
+                accept.style.display = 'none';
+                bar.classList.add('show');
+            }
+        })();
+    </script>
+
+    <!-- ====== ENVOI VERS LE DRIVE CENTRAL (via Google Apps Script) ====== -->
+    <script>
+    (function () {
+        // ======================================================================
+        // CONFIGURATION  —  À RENSEIGNER (voir LISEZ-MOI.txt, partie Apps Script)
+        // URL de votre application web Apps Script (se termine par /exec) :
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXi_r2hrlLlrctXM790J27PiXGTKiGPFIkNJsrKSVxp2I3_IOeyZwwYfRoae78f-9x/exec';
+        // Mot de passe partagé : DOIT être identique à SECRET dans le script Apps Script.
+        const UPLOAD_SECRET = 'Expair38';
+        // ======================================================================
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(String(r.result).split(',')[1]);
+                r.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+                r.readAsDataURL(blob);
+            });
+        }
+
+        // Nom de l'expéditeur (mémorisé), pour distinguer les envois dans le dossier central
+        function getSenderName() {
+            let name = '';
+            try { name = localStorage.getItem('senderName') || ''; } catch (e) {}
+            if (!name) {
+                name = (window.prompt('Votre nom ou équipe (apparaîtra sur le fichier) :', '') || '').trim();
+                if (name) { try { localStorage.setItem('senderName', name); } catch (e) {} }
+            }
+            return name;
+        }
+
+        async function sendToCentralDrive() {
+            const btn = document.getElementById('driveButton');
+            const setLabel = (t) => { if (btn) btn.textContent = t; };
+            const original = 'Envoyer vers le Drive central';
+
+            if (APPS_SCRIPT_URL.indexOf('VOTRE_ID_DEPLOIEMENT') !== -1) {
+                alert("Configuration requise.\n\nOuvrez index.html et renseignez APPS_SCRIPT_URL (et UPLOAD_SECRET) avec l'adresse de votre application web Apps Script.\nÉtapes détaillées dans LISEZ-MOI.txt.");
+                return;
+            }
+            try {
+                if (btn) btn.disabled = true;
+                const sender = getSenderName();
+                setLabel('Préparation…');
+                const bundle = await window.buildBundleZipBlob();
+                if (!bundle) return;
+                const base64 = await blobToBase64(bundle.blob);
+
+                // Préfixe le nom du fichier par l'expéditeur (ex. "Erwan - export_....zip")
+                const fileName = (sender ? sender.replace(/[\\/:*?"<>|]+/g, '_') + ' - ' : '') + bundle.fileName;
+
+                const payload = {
+                    secret: UPLOAD_SECRET,
+                    fileName: fileName,
+                    mimeType: 'application/zip',
+                    dataBase64: base64,
+                    sender: sender,
+                    sentAt: new Date().toISOString()
+                };
+
+                setLabel('Envoi vers le Drive…');
+                // text/plain => requête "simple" (pas de pré-vol CORS, qu'Apps Script ne gère pas)
+                const res = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                    redirect: 'follow'
+                });
+                let out = null;
+                try { out = await res.json(); } catch (e) { /* réponse illisible */ }
+
+                if (out && out.ok) {
+                    alert('Envoyé sur le Drive central ✅\n\nFichier : ' + (out.name || fileName));
+                } else if (out && out.error) {
+                    throw new Error(out.error);
+                } else {
+                    // Réponse non lisible : l'envoi a probablement réussi côté serveur
+                    alert("Envoi effectué.\n\n(La confirmation n'a pas pu être lue par le navigateur, mais le fichier a normalement été déposé. Vérifiez le Drive central.)");
+                }
+            } catch (err) {
+                console.error('Drive central :', err);
+                alert("Échec de l'envoi vers le Drive central :\n" + (err && err.message ? err.message : err)
+                    + "\n\nVérifiez la connexion et l'URL/déploiement Apps Script.");
+            } finally {
+                if (btn) btn.disabled = false;
+                setLabel(original);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const btn = document.getElementById('driveButton');
+            if (btn) btn.addEventListener('click', sendToCentralDrive);
+        });
+    })();
+    </script>
+
+</body>
+</html>
